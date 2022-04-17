@@ -1,4 +1,5 @@
 from string import ascii_uppercase as alphabet
+from itertools import product
 
 
 class EasterEgg:
@@ -104,9 +105,29 @@ class EasterEgg:
         self.bunny_pos = init_pos
         self.egg_locations = set()
 
+        self.readfile(file_location)
+
+    def readfile(self, file_location):
         with open(file_location, "r") as f:
             for egg in f:
-                self.egg_locations.add(egg)
+                self.egg_locations.add(egg.strip())
+
+    def __str__(self) -> str:
+        repr_str = ""
+        for x in range(1, 1+self.height):
+            for y in range(1, 1+self.width):
+                loc_str = self.tuple_to_loc((x, y))
+                # if egg
+                if loc_str in self.egg_locations:
+                    repr_str += "O"
+                elif loc_str == self.bunny_pos:
+                    repr_str += "X"
+                else:
+                    repr_str += "#"
+
+            repr_str += "\n"
+
+        return repr_str.strip()
 
     def haas(self) -> str:
         """De methode moet de positie (str) van de paashaas in het rooster teruggeven."""
@@ -134,17 +155,34 @@ class EasterEgg:
         De methode moet een verzameling teruggeven met de posities van alle velden in het rooster waarnaar de paashaas vanaf zijn huidige positie kan springen.
         """
         mogelijke_zetten = set()
+        row, column = self.loc_to_tuple()
 
         # rechts van haas
-        mogelijke_tuple = self.loc_to_tuple()
-        if (column := mogelijke_tuple[1]) < self.width:
+        if column < self.width:
             for mogelijke_column in range(column + 1, self.width + 1):
                 mogelijke_zetten.add(
-                    self.tuple_to_loc(mogelijke_tuple[0], mogelijke_column)
+                    self.tuple_to_loc((row, mogelijke_column))
                 )
 
         # paardenzetten zoals in schaken
-        pass
+        for drow, dcol in [(-1, 2), (1, -2), (-1, -2), (1, 2), (2, -1), (2, 1), (-2, 1), (-2, -1)]:
+            mogelijke_pos = (row + drow, column + dcol)
+            if self.is_in_bounds(mogelijke_pos):
+                mogelijke_zetten.add(self.tuple_to_loc(mogelijke_pos))
+            else:
+                print("not in bounds: ", self.tuple_to_loc(mogelijke_pos))
+        return mogelijke_zetten
+
+    def is_in_bounds(self, pos) -> bool:
+        """Returns if pos is in bounds of veld."""
+        if isinstance(pos, str):
+            x, y = self.loc_to_tuple(pos)
+        else:
+            x, y = pos
+        return (
+            1 <= x <= self.height and
+            1 <= y <= self.width
+        )
 
     def zet(self, p: str):
         """
@@ -155,7 +193,14 @@ class EasterEgg:
         (waardoor het paasei van het rooster verdwijnt), en moet de methode een
         verwijzing teruggeven naar het object waarop de methode werd aangeroepen.
         """
-        pass
+        mogelijke_zetten = self.mogelijke_zetten()
+        assert p in mogelijke_zetten, "ongeldige zet"
+
+        self.bunny_pos = p
+
+        if p in self.egg_locations:
+            self.egg_locations.remove(p)
+        return self
 
     def isleeg(self) -> bool:
         """
