@@ -114,8 +114,8 @@ class EasterEgg:
 
     def __str__(self) -> str:
         repr_str = ""
-        for x in range(1, 1+self.height):
-            for y in range(1, 1+self.width):
+        for x in range(1, 1 + self.height):
+            for y in range(1, 1 + self.width):
                 loc_str = self.tuple_to_loc((x, y))
                 # if egg
                 if loc_str in self.egg_locations:
@@ -142,9 +142,9 @@ class EasterEgg:
         """from str "A2" to tuple (1,2) with each number starting from A=1 (not A=0).
         B=2, C=3, etc."""
         if pos is None:
-            return (alphabet.index(self.bunny_pos[0]) + 1, int(self.bunny_pos[1]))
-        else:
-            return (alphabet.index(pos[0]) + 1, int(pos[1]))
+            pos = self.bunny_pos
+
+        return (alphabet.index(pos[0]) + 1, int(pos[1:]))
 
     def tuple_to_loc(self, pos) -> str:
         """inverse of loc_to_tuple, pos is required"""
@@ -160,17 +160,23 @@ class EasterEgg:
         # rechts van haas
         if column < self.width:
             for mogelijke_column in range(column + 1, self.width + 1):
-                mogelijke_zetten.add(
-                    self.tuple_to_loc((row, mogelijke_column))
-                )
+                mogelijke_zetten.add(self.tuple_to_loc((row, mogelijke_column)))
 
         # paardenzetten zoals in schaken
-        for drow, dcol in [(-1, 2), (1, -2), (-1, -2), (1, 2), (2, -1), (2, 1), (-2, 1), (-2, -1)]:
+        for drow, dcol in [
+            (-1, 2),
+            (-1, -2),
+            (1, 2),
+            (1, -2),
+            (2, 1),
+            (2, -1),
+            (-2, 1),
+            (-2, -1),
+        ]:
             mogelijke_pos = (row + drow, column + dcol)
+
             if self.is_in_bounds(mogelijke_pos):
                 mogelijke_zetten.add(self.tuple_to_loc(mogelijke_pos))
-            else:
-                print("not in bounds: ", self.tuple_to_loc(mogelijke_pos))
         return mogelijke_zetten
 
     def is_in_bounds(self, pos) -> bool:
@@ -179,10 +185,7 @@ class EasterEgg:
             x, y = self.loc_to_tuple(pos)
         else:
             x, y = pos
-        return (
-            1 <= x <= self.height and
-            1 <= y <= self.width
-        )
+        return 1 <= x <= self.height and 1 <= y <= self.width
 
     def zet(self, p: str):
         """
