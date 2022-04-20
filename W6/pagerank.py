@@ -1,4 +1,4 @@
-import struct
+from copy import deepcopy
 
 
 class Netwerk:
@@ -6,33 +6,6 @@ class Netwerk:
     >>> netwerk = Netwerk('www.txt')
     >>> len(netwerk)
     6
-    >>> netwerk.score('A')
-    0.16666666666666666
-    >>> netwerk.volgende_score('A')
-    0.09583333333333334
-    >>> netwerk.volgende_score('E')
-    0.16666666666666666
-    >>> netwerk.scores_bijwerken()
-    >>> netwerk.score('A')
-    0.09583333333333334
-    >>> netwerk.score('E')
-    0.16666666666666666
-    >>> netwerk.scores_bijwerken()
-    >>> netwerk.score('A')
-    0.08245370370370371
-    >>> netwerk.scores_bijwerken(stappen=100)
-    >>> netwerk.score('A')
-    0.05170474575702128
-    >>> netwerk.score('B')
-    0.07367926270375533
-    >>> netwerk.score('C')
-    0.057412412496432724
-    >>> netwerk.score('D')
-    0.34870368521481654
-    >>> netwerk.score('E')
-    0.1999038119733183
-    >>> netwerk.score('F')
-    0.268596081854656
     >>> netwerk.scores_initialiseren()
     >>> netwerk.score('A')
     0.16666666666666666
@@ -41,41 +14,12 @@ class Netwerk:
     0.05170474575702128
     >>> netwerk.rangschikking()
     [('D', 0.34870368521481654), ('F', 0.268596081854656), ('E', 0.1999038119733183), ('B', 0.07367926270375533), ('C', 0.057412412496432724), ('A', 0.05170474575702128)]
-    >>> netwerk = Netwerk('www.txt', demping=0.9)
-    >>> netwerk.scores_bijwerken(stappen=100)
-    >>> netwerk.rangschikking()
-    [('D', 0.3750808151098345), ('F', 0.2862458852154), ('E', 0.20599833187742753), ('B', 0.05395734936310289), ('C', 0.04150565335623299), ('A', 0.03721196507800199)]
-
-    # >>> netwerk.uitgaand('A')
-    # {'B', 'C'}
-    # >>> netwerk.uitgaand('B')
-    # {'A', 'B', 'C', 'D', 'E', 'F'}
-    # >>> netwerk.uitgaand('C')
-    # {'A', 'B', 'E'}
-    # >>> netwerk.uitgaand('D')
-    # {'E', 'F'}
-    # >>> netwerk.uitgaand('E')
-    # {'D', 'F'}
-    # >>> netwerk.uitgaand('F')
-    # {'D'}
-    # >>> netwerk.inkomend('A')
-    # {'B', 'C'}
-    # >>> netwerk.inkomend('B')
-    # {'A', 'B', 'C'}
-    # >>> netwerk.inkomend('C')
-    # {'A', 'B'}
-    # >>> netwerk.inkomend('D')
-    # {'B', 'E', 'F'}
-    # >>> netwerk.inkomend('E')
-    # {'B', 'C', 'D'}
-    # >>> netwerk.inkomend('F')
-    # {'B', 'D', 'E'}
     """
 
-    def __init__(self, file_location: str, d: float = 0.85) -> None:
-        self.d = d
-        self.network_connections: dict = dict()
-        self.scores: dict = dict()
+    def __init__(self, file_location: str, demping: float = 0.85) -> None:
+        self.d = demping
+        self.network_connections: dict = {}
+        self.scores: dict = {}
         self.webpages: set = set()
 
         with open(file_location, "r") as f:
@@ -100,11 +44,14 @@ class Netwerk:
             # process solitary webpages
             # add every other webpage to the connections of the solitary webpage
             for solitary_webpage in solitary_webpages:
-                for other_webpage in self.network_connections.keys():
+                for other_webpage in self.network_connections:
                     self.network_connections[solitary_webpage].add(other_webpage)
 
         # scores
         self.scores_initialiseren()
+
+    def AssertValidPage(self, p):
+        assert p in self.network_connections, f"Ongeldige webpagina {p}."
 
     def scores_initialiseren(self):
         """initialise scores to 1/N for network with N webpages"""
@@ -126,12 +73,12 @@ class Netwerk:
 
     def uitgaand(self, p):
         """De methode moet een verzameling (set) teruggeven met de labels van alle webpagina's waar p naar verwijst volgens PageRank."""
-        assert p in self.network_connections.keys(), f"Ongeldige webpagina {p}."
+        self.AssertValidPage(p)
         return self.network_connections[p]
 
     def inkomend(self, p):
         """De methode moet een verzameling (set) teruggeven met de labels van alle webpagina's die naar p verwijzen volgens PageRank."""
-        assert p in self.network_connections.keys(), f"Ongeldige webpagina {p}."
+        self.AssertValidPage(p)
 
         inkomend = set()
         for other_webpage, webpage_outgoing in self.network_connections.items():
@@ -141,12 +88,31 @@ class Netwerk:
 
     def score(self, p) -> float:
         """De methode moet de huidige score (float) van p teruggeven."""
-        pass
+        self.AssertValidPage(p)
+        return self.scores[p]
 
     def volgende_score(self, p) -> float:
         """De methode moet de nieuwe score (float) teruggeven die p zou krijgen in de volgende stap
         van het PageRank-algoritme, berekend op basis van de huidige scores van de webpagina's."""
-        pass
+        self.AssertValidPage(p)
+
+        new_score = (1 - self.d) / len(self)
+        new_score += self.d * sum(
+            self.score(webpage) / len(self.uitgaand(webpage))
+            for webpage in self.inkomend(p)
+        )
+        return new_score
+
+    def scores_bijwerken(self, stappen=1):
+        """De methode moet ervoor zorgen dat elke webpagina in het netwerk een
+        nieuwe score krijgt door stappen van het PageRank-algoritme uit te voeren.
+        """
+        for _ in range(stappen):
+            # scores berekend uit data van vorige stap
+            new_scores = deepcopy(self.scores)
+            for webpage in self.webpages:
+                new_scores[webpage] = self.volgende_score(webpage)
+            self.scores = new_scores
 
     def rangschikking(self):
         """
@@ -155,7 +121,12 @@ class Netwerk:
         De tuples moeten opgelijst worden volgens dalende score.
         Tuples met dezelfde score moeten alfabetisch volgens label opgelijst worden.
         """
-        pass
+        rank = []
+
+        for p in self.webpages:
+            rank.append((p, self.scores[p]))
+        rank.sort(key=lambda x: (-x[1], x[0]))
+        return rank
 
 
 if __name__ == "__main__":
